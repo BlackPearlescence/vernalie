@@ -1,0 +1,7 @@
+Botanical_Group,Plant_Variety,Stock_Count,Yard_Location,Infra_Type,Date_Started,Current_Status,Weather_Shock,Order_Number,Order_Qty,Target_Date
+Basil,Genovese,3000,Herb House Rack 1,GREENHOUSE,2026-03-10,IN_PRODUCTION,0.00,HERB-210,2500,2026-05-05
+Mint,Spearmint,1200,Runner Table 2,SHADE_HOUSE,2026-03-12,IN_PRODUCTION,0.00,HERB-211,900,2026-06-15
+Lavender,Phenomenal,950,Perennial Yard Row 8,OPEN_FIELD,2026-02-20,IN_PRODUCTION,0.06,PER-330,800,2027-04-15
+Echinacea,PowWow Wild Berry,1100,Perennial Yard Row 9,OPEN_FIELD,2026-02-22,IN_PRODUCTION,0.03,PER-331,850,2027-04-15
+Hosta,Blue Angel,700,Shade Yard Row 3,SHADE_HOUSE,2026-01-30,IN_PRODUCTION,0.00,PER-332,500,2027-05-01
+Rosemary,Arp,850,Herb House Rack 3,GREENHOUSE,2026-03-18,ON_HOLD,0.02,,0,2026-06-01

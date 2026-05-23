@@ -1,0 +1,7 @@
+crop_name,variety,total_plugs,bench,growing_environment,start_date,batch_state,shock_adjustment,buyer_ref,reserved_units,ready_by
+Tomato,Roma,5000,Greenhouse 2 Bench 4,GREENHOUSE,2026-02-01,IN_PRODUCTION,0.00,CSA-144,4200,2026-04-12
+Tomato,Sungold,4200,Greenhouse 2 Bench 5,GREENHOUSE,2026-02-03,IN_PRODUCTION,0.01,CSA-145,3600,2026-04-14
+Pepper,California Wonder,3600,Greenhouse 3 Bench 1,GREENHOUSE,2026-02-08,IN_PRODUCTION,0.00,CSA-146,3000,2026-04-28
+Eggplant,Black Beauty,1800,Greenhouse 3 Bench 2,GREENHOUSE,2026-02-10,IN_PRODUCTION,0.00,CSA-147,1400,2026-05-05
+Lettuce,Buttercrunch,7200,Propagation Bay A,HIGH_TECH_GREENHOUSE,2026-03-01,READY_TO_SHIP,0.00,CSA-148,6500,2026-04-01
+Kale,Lacinato,4000,Propagation Bay B,HIGH_TECH_GREENHOUSE,2026-03-04,IN_PRODUCTION,0.00,,0,2026-04-15

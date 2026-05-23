@@ -2,14 +2,14 @@ import Link from "next/link";
 import { Leaf, LogOut } from "lucide-react";
 
 import { logout } from "@/app/login/actions";
-import { requireUser } from "@/lib/supabase/server";
+import { requireWorkspace } from "@/lib/server/workspace";
 
 export default async function AppLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const user = await requireUser();
+  const { nursery, user } = await requireWorkspace();
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -23,6 +23,9 @@ export default async function AppLayout({
           </Link>
 
           <div className="flex items-center gap-4">
+            <p className="hidden max-w-[220px] truncate text-sm font-semibold text-foreground md:block">
+              {nursery.businessName}
+            </p>
             <p className="hidden max-w-[260px] truncate text-sm text-secondary sm:block">
               {user.email}
             </p>

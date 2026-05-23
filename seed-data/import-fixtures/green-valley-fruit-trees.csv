@@ -1,0 +1,7 @@
+Tree_Type,Cultivar,Quantity_On_Hand,Block,Production_System,Planted_On,Status,Manual_Shock,Contract_ID,Committed_Qty,Ship_Target
+Apple,Honeycrisp,1000,North Block A,OPEN_FIELD,2026-01-15,IN_PRODUCTION,0.04,INV-882,925,2027-03-20
+Apple,Gala,850,North Block B,OPEN_FIELD,2026-01-22,IN_PRODUCTION,0.00,INV-883,700,2027-03-20
+Apple,Granny Smith,700,North Block C,OPEN_FIELD,2026-02-02,IN_PRODUCTION,0.00,INV-884,625,2027-04-05
+Pear,Bartlett,600,Orchard Row 6,OPEN_FIELD,2026-02-15,IN_PRODUCTION,0.02,INV-901,500,2027-04-10
+Peach,Redhaven,500,South Block D,OPEN_FIELD,2026-03-01,IN_PRODUCTION,0.08,INV-915,475,2027-05-01
+Plum,Stanley,450,South Block E,OPEN_FIELD,2026-03-05,ON_HOLD,0.00,,0,2027-05-10
