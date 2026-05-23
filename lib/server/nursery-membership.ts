@@ -2,7 +2,16 @@ import type { User } from "@supabase/supabase-js";
 
 import { getPrisma } from "./prisma";
 
-export async function ensureOwnerNurseryForUser(user: User) {
+type NurserySignupProfile = {
+  businessName?: string;
+  usdaZone?: number;
+  zipCode?: string;
+};
+
+export async function ensureOwnerNurseryForUser(
+  user: User,
+  profile: NurserySignupProfile = profileFromUserMetadata(user),
+) {
   const email = user.email;
 
   if (!email) {
@@ -30,9 +39,9 @@ export async function ensureOwnerNurseryForUser(user: User) {
       role: "OWNER",
       nursery: {
         create: {
-          businessName: defaultBusinessName(email),
-          usdaZone: 6,
-          zipCode: "00000",
+          businessName: profile.businessName?.trim() || defaultBusinessName(email),
+          usdaZone: profile.usdaZone ?? 6,
+          zipCode: profile.zipCode?.trim() || "00000",
         },
       },
     },
@@ -51,6 +60,18 @@ export async function getNurseryMembershipForUser(authUserId: string) {
       nursery: true,
     },
   });
+}
+
+function profileFromUserMetadata(user: User): NurserySignupProfile {
+  const metadata = user.user_metadata;
+  const usdaZone = Number(metadata.usdaZone);
+
+  return {
+    businessName:
+      typeof metadata.businessName === "string" ? metadata.businessName : undefined,
+    usdaZone: Number.isInteger(usdaZone) && usdaZone > 0 ? usdaZone : undefined,
+    zipCode: typeof metadata.zipCode === "string" ? metadata.zipCode : undefined,
+  };
 }
 
 function defaultBusinessName(email: string) {
