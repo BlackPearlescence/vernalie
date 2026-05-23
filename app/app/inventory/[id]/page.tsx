@@ -7,15 +7,19 @@ import {
   CalendarDays,
   ClipboardList,
   MapPin,
+  Save,
+  SlidersHorizontal,
   Sprout,
   ThermometerSun,
   Warehouse,
 } from "lucide-react";
 
 import { forecastBatch } from "@/lib/domain/forecasting";
-import type { BatchStatus } from "@/lib/generated/prisma/enums";
+import { BatchStatus, InfrastructureType } from "@/lib/generated/prisma/enums";
 import { getPrisma } from "@/lib/server/prisma";
 import { requireWorkspace } from "@/lib/server/workspace";
+
+import { updateBatchProductionState } from "./actions";
 
 export default async function BatchDetailPage({
   params,
@@ -164,6 +168,93 @@ export default async function BatchDetailPage({
               value={`${((batch.category.genus.baseLossRate + batch.category.decayModifier) * 100).toFixed(1)}%`}
             />
           </dl>
+        </section>
+
+        <section className="rounded-[8px] border border-border bg-surface p-5">
+          <div className="mb-5 flex items-center justify-between gap-4">
+            <div>
+              <p className="font-mono text-sm uppercase text-primary">Field update</p>
+              <h2 className="mt-2 text-xl font-semibold">Production state</h2>
+            </div>
+            <SlidersHorizontal className="h-5 w-5 text-primary" />
+          </div>
+          <form action={updateBatchProductionState} className="grid gap-4">
+            <input name="batchId" type="hidden" value={batch.id} />
+            <label className="grid gap-2">
+              <span className="text-sm font-semibold">Current quantity</span>
+              <input
+                className="h-11 rounded-[8px] border border-border bg-background px-3 text-sm outline-none transition focus:border-primary"
+                defaultValue={batch.currentQuantity}
+                min={0}
+                name="currentQuantity"
+                required
+                type="number"
+              />
+            </label>
+            <label className="grid gap-2">
+              <span className="text-sm font-semibold">Field location</span>
+              <input
+                className="h-11 rounded-[8px] border border-border bg-background px-3 text-sm outline-none transition focus:border-primary"
+                defaultValue={batch.fieldLocation}
+                name="fieldLocation"
+                required
+              />
+            </label>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold">Status</span>
+                <select
+                  className="h-11 rounded-[8px] border border-border bg-background px-3 text-sm outline-none transition focus:border-primary"
+                  defaultValue={batch.status}
+                  name="status"
+                >
+                  {Object.values(BatchStatus).map((status) => (
+                    <option key={status} value={status}>
+                      {formatEnumLabel(status)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold">Infrastructure</span>
+                <select
+                  className="h-11 rounded-[8px] border border-border bg-background px-3 text-sm outline-none transition focus:border-primary"
+                  defaultValue={batch.infrastructureType}
+                  name="infrastructureType"
+                >
+                  {Object.values(InfrastructureType).map((infrastructureType) => (
+                    <option key={infrastructureType} value={infrastructureType}>
+                      {formatEnumLabel(infrastructureType)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <label className="grid gap-2">
+              <span className="flex items-center justify-between gap-3 text-sm font-semibold">
+                Manual shock factor
+                <span className="font-mono text-secondary">
+                  {(batch.manualShockFactor * 100).toFixed(0)}%
+                </span>
+              </span>
+              <input
+                className="h-11 accent-primary"
+                defaultValue={(batch.manualShockFactor * 100).toFixed(0)}
+                max={100}
+                min={0}
+                name="manualShockPercent"
+                step={1}
+                type="range"
+              />
+            </label>
+            <button
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-[8px] bg-primary px-4 text-sm font-semibold text-white transition hover:bg-primary-hover"
+              type="submit"
+            >
+              <Save className="h-4 w-4" />
+              Save and recalculate
+            </button>
+          </form>
         </section>
 
         <section className="rounded-[8px] border border-border bg-surface p-5">

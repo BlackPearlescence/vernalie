@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AlertTriangle, BarChart3, CalendarDays, FileSpreadsheet, Sprout } from "lucide-react";
 
 import { getDashboardForNursery } from "@/lib/server/dashboard-data";
@@ -11,21 +12,25 @@ export default async function DashboardPage() {
       label: "Active batches",
       value: dashboard.totals.activeBatchCount.toLocaleString(),
       icon: Sprout,
+      href: "/app/inventory",
     },
     {
       label: "Starting units",
       value: dashboard.totals.startingQuantity.toLocaleString(),
       icon: FileSpreadsheet,
+      href: "/app/inventory",
     },
     {
       label: "Projected yield",
       value: dashboard.totals.projectedYield.toLocaleString(),
       icon: BarChart3,
+      href: "/app/inventory",
     },
     {
       label: "Deficit alerts",
       value: dashboard.totals.deficitAlertCount.toLocaleString(),
       icon: AlertTriangle,
+      href: "/app/inventory?risk=deficit",
     },
   ];
 
@@ -48,11 +53,15 @@ export default async function DashboardPage() {
           const Icon = card.icon;
 
           return (
-            <article className="rounded-[8px] border border-border bg-surface p-5" key={card.label}>
+            <Link
+              className="block rounded-[8px] border border-border bg-surface p-5 transition hover:bg-surface-muted"
+              href={card.href}
+              key={card.label}
+            >
               <Icon className="h-5 w-5 text-primary" />
               <p className="mt-5 font-mono text-2xl font-semibold">{card.value}</p>
               <p className="mt-2 text-sm text-secondary">{card.label}</p>
-            </article>
+            </Link>
           );
         })}
       </div>
@@ -68,6 +77,34 @@ export default async function DashboardPage() {
         </div>
       ) : (
         <div className="mt-8 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+          {dashboard.deficitAlerts.length ? (
+            <section className="rounded-[8px] border border-danger bg-danger/10 p-5 text-danger lg:col-span-2">
+              <div className="mb-5 flex items-center justify-between gap-4">
+                <div>
+                  <p className="font-mono text-sm uppercase">Top alerts</p>
+                  <h2 className="mt-2 text-xl font-semibold">Contract risk</h2>
+                </div>
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {dashboard.deficitAlerts.slice(0, 4).map((alert) => (
+                  <Link
+                    className="block rounded-[8px] border border-danger/40 bg-background p-4 transition hover:bg-surface"
+                    href={`/app/inventory/${alert.batchId}`}
+                    key={`${alert.batchId}-${alert.externalRef}`}
+                  >
+                    <p className="font-semibold">
+                      DEFICIT WARNING: -{alert.deficitUnits.toLocaleString()} UNITS
+                    </p>
+                    <p className="mt-2 text-sm">
+                      {alert.externalRef} compromised · {alert.cultivarName}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
           <section className="rounded-[8px] border border-border bg-surface p-5">
             <div className="mb-5 flex items-center justify-between gap-4">
               <div>
@@ -78,8 +115,9 @@ export default async function DashboardPage() {
             </div>
             <div className="space-y-3">
               {dashboard.genusSummaries.map((summary) => (
-                <div
-                  className="grid gap-3 rounded-[8px] border border-border bg-background p-4 sm:grid-cols-[1fr_auto]"
+                <Link
+                  className="grid gap-3 rounded-[8px] border border-border bg-background p-4 transition hover:bg-surface-muted sm:grid-cols-[1fr_auto]"
+                  href={`/app/inventory?genus=${encodeURIComponent(summary.genusName)}`}
                   key={summary.genusName}
                 >
                   <div>
@@ -94,7 +132,7 @@ export default async function DashboardPage() {
                       {summary.batchCount} batches · {summary.riskLevel}
                     </p>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </section>
@@ -109,8 +147,9 @@ export default async function DashboardPage() {
             </div>
             <div className="space-y-3">
               {dashboard.seasonalAvailability.map((season) => (
-                <div
-                  className="flex items-center justify-between gap-4 rounded-[8px] bg-background p-4"
+                <Link
+                  className="flex items-center justify-between gap-4 rounded-[8px] bg-background p-4 transition hover:bg-surface-muted"
+                  href={`/app/inventory?season=${encodeURIComponent(season.season)}`}
                   key={season.season}
                 >
                   <div>
@@ -120,7 +159,7 @@ export default async function DashboardPage() {
                   <p className="font-mono text-lg font-semibold">
                     {season.projectedYield.toLocaleString()}
                   </p>
-                </div>
+                </Link>
               ))}
             </div>
           </section>

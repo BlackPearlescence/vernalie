@@ -20,6 +20,9 @@ type InventorySearchParams = {
   status?: string | string[];
   infrastructure?: string | string[];
   location?: string | string[];
+  risk?: string | string[];
+  genus?: string | string[];
+  season?: string | string[];
 };
 
 export default async function InventoryPage({
@@ -31,7 +34,7 @@ export default async function InventoryPage({
   const filters = normalizeFilters(await searchParams);
   const prisma = getPrisma();
   const where = buildInventoryWhere(nursery.id, filters);
-  const [batches, totals, locations] = await Promise.all([
+  const [loadedBatches, locations] = await Promise.all([
     prisma.livingBatch.findMany({
       where,
       include: {
@@ -52,17 +55,6 @@ export default async function InventoryPage({
       ],
       take: 250,
     }),
-    prisma.livingBatch.aggregate({
-      where,
-      _sum: {
-        startingQuantity: true,
-        currentQuantity: true,
-        projectedYield: true,
-      },
-      _count: {
-        id: true,
-      },
-    }),
     prisma.livingBatch.findMany({
       where: {
         nurseryId: nursery.id,
@@ -76,12 +68,21 @@ export default async function InventoryPage({
       },
     }),
   ]);
+  const batches =
+    filters.risk === "deficit"
+      ? loadedBatches.filter((batch) => {
+          const committed = getCommittedQuantity(batch.commitments);
+          return committed > batch.projectedYield;
+        })
+      : loadedBatches;
+  const totals = {
+    batchCount: batches.length,
+    currentQuantity: sum(batches.map((batch) => batch.currentQuantity)),
+    projectedYield: sum(batches.map((batch) => batch.projectedYield)),
+  };
 
   const deficitCount = batches.filter((batch) => {
-    const committed = batch.commitments.reduce(
-      (sum, commitment) => sum + commitment.committedQuantity,
-      0,
-    );
+    const committed = getCommittedQuantity(batch.commitments);
     return committed > batch.projectedYield;
   }).length;
 
@@ -108,15 +109,15 @@ export default async function InventoryPage({
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <SummaryCard label="Batches" value={totals._count.id} icon={Sprout} />
+        <SummaryCard label="Batches" value={totals.batchCount} icon={Sprout} />
         <SummaryCard
           label="Current units"
-          value={totals._sum.currentQuantity ?? 0}
+          value={totals.currentQuantity}
           icon={Warehouse}
         />
         <SummaryCard
           label="Projected yield"
-          value={totals._sum.projectedYield ?? 0}
+          value={totals.projectedYield}
           icon={CalendarDays}
         />
         <SummaryCard
@@ -172,6 +173,19 @@ export default async function InventoryPage({
             Apply
           </button>
         </div>
+        {hasDashboardFilters(filters) ? (
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            {filters.risk === "deficit" ? <FilterChip label="Deficit risk" /> : null}
+            {filters.genus ? <FilterChip label={`Genus: ${filters.genus}`} /> : null}
+            {filters.season ? <FilterChip label={`Season: ${filters.season}`} /> : null}
+            <Link
+              className="inline-flex h-9 items-center rounded-[8px] px-3 text-sm font-semibold text-secondary transition hover:bg-surface-muted hover:text-foreground"
+              href="/app/inventory"
+            >
+              Clear dashboard filters
+            </Link>
+          </div>
+        ) : null}
       </form>
 
       <div className="mt-6 overflow-hidden rounded-[8px] border border-border bg-surface">
@@ -295,6 +309,9 @@ function normalizeFilters(searchParams: InventorySearchParams) {
     status: readSingle(searchParams.status),
     infrastructure: readSingle(searchParams.infrastructure),
     location: readSingle(searchParams.location),
+    risk: readSingle(searchParams.risk),
+    genus: readSingle(searchParams.genus),
+    season: readSingle(searchParams.season),
   };
 }
 
@@ -318,8 +335,28 @@ function buildInventoryWhere(
     where.fieldLocation = filters.location;
   }
 
+  if (filters.genus) {
+    where.category = {
+      genus: {
+        scientificName: filters.genus,
+      },
+    };
+  }
+
+  if (filters.season) {
+    const range = seasonRange(filters.season);
+
+    if (range) {
+      where.estimatedReadyDate = {
+        gte: range.startsAt,
+        lt: range.endsAt,
+      };
+    }
+  }
+
   if (filters.q) {
-    where.OR = [
+    const searchWhere: Prisma.LivingBatchWhereInput = {
+      OR: [
       {
         fieldLocation: {
           contains: filters.q,
@@ -354,10 +391,17 @@ function buildInventoryWhere(
           },
         },
       },
-    ];
+      ],
+    };
+
+    where.AND = [...(Array.isArray(where.AND) ? where.AND : []), searchWhere];
   }
 
   return where;
+}
+
+function hasDashboardFilters(filters: ReturnType<typeof normalizeFilters>) {
+  return filters.risk === "deficit" || Boolean(filters.genus) || Boolean(filters.season);
 }
 
 function readSingle(value: string | string[] | undefined) {
@@ -399,6 +443,14 @@ function SelectFilter({
         ))}
       </select>
     </label>
+  );
+}
+
+function FilterChip({ label }: { label: string }) {
+  return (
+    <span className="inline-flex h-9 items-center rounded-[8px] bg-primary/10 px-3 text-sm font-semibold text-primary">
+      {label}
+    </span>
   );
 }
 
@@ -478,6 +530,49 @@ function getCommittedQuantity(
   }>,
 ) {
   return commitments.reduce((sum, commitment) => sum + commitment.committedQuantity, 0);
+}
+
+function seasonRange(season: string) {
+  const [name, yearValue] = season.split(" ");
+  const year = Number(yearValue);
+
+  if (!Number.isInteger(year)) {
+    return null;
+  }
+
+  if (name === "Spring") {
+    return {
+      startsAt: new Date(Date.UTC(year, 2, 1)),
+      endsAt: new Date(Date.UTC(year, 5, 1)),
+    };
+  }
+
+  if (name === "Summer") {
+    return {
+      startsAt: new Date(Date.UTC(year, 5, 1)),
+      endsAt: new Date(Date.UTC(year, 8, 1)),
+    };
+  }
+
+  if (name === "Autumn") {
+    return {
+      startsAt: new Date(Date.UTC(year, 8, 1)),
+      endsAt: new Date(Date.UTC(year, 11, 1)),
+    };
+  }
+
+  if (name === "Winter") {
+    return {
+      startsAt: new Date(Date.UTC(year, 11, 1)),
+      endsAt: new Date(Date.UTC(year + 1, 2, 1)),
+    };
+  }
+
+  return null;
+}
+
+function sum(values: number[]) {
+  return values.reduce((total, value) => total + value, 0);
 }
 
 function formatReadyDate(date: Date) {
