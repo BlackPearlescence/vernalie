@@ -1,0 +1,44 @@
+import Link from "next/link";
+import { Leaf, LogOut } from "lucide-react";
+
+import { logout } from "@/app/login/actions";
+import { requireUser } from "@/lib/supabase/server";
+
+export default async function AppLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  const user = await requireUser();
+
+  return (
+    <main className="min-h-screen bg-background text-foreground">
+      <header className="border-b border-border bg-surface">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
+          <Link className="flex items-center gap-3" href="/app/dashboard">
+            <span className="flex h-10 w-10 items-center justify-center rounded-[8px] bg-primary text-white">
+              <Leaf className="h-5 w-5" />
+            </span>
+            <span className="text-lg font-semibold">Vernalie</span>
+          </Link>
+
+          <div className="flex items-center gap-4">
+            <p className="hidden max-w-[260px] truncate text-sm text-secondary sm:block">
+              {user.email}
+            </p>
+            <form action={logout}>
+              <button
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] border border-border bg-surface px-3 text-sm font-semibold text-foreground transition hover:bg-surface-muted"
+                type="submit"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign out
+              </button>
+            </form>
+          </div>
+        </div>
+      </header>
+      {children}
+    </main>
+  );
+}

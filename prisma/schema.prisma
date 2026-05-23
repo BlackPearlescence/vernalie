@@ -1,0 +1,177 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum LifecycleType {
+  MULTI_YEAR_PERENNIAL
+  PROPAGATION_RUNNER
+  RAPID_ANNUAL
+}
+
+enum BatchStatus {
+  IN_PRODUCTION
+  READY_TO_SHIP
+  ON_HOLD
+  CULLED
+}
+
+enum InfrastructureType {
+  HIGH_TECH_GREENHOUSE
+  GREENHOUSE
+  SHADE_HOUSE
+  HOOP_HOUSE
+  OPEN_FIELD
+}
+
+enum ImportStatus {
+  MAPPING
+  VALIDATING
+  IMPORTED
+  FAILED
+}
+
+enum NurseryRole {
+  OWNER
+  MANAGER
+  STAFF
+}
+
+model Nursery {
+  id           String         @id @default(uuid())
+  businessName String
+  usdaZone     Int
+  zipCode      String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  batches      LivingBatch[]
+  layouts      ExcelLayout[]
+  imports      ImportJob[]
+  commitments  ContractCommitment[]
+  members      NurseryMember[]
+
+  @@index([zipCode])
+  @@index([usdaZone])
+}
+
+model NurseryMember {
+  id         String      @id @default(uuid())
+  nurseryId  String
+  nursery    Nursery     @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  authUserId String
+  email      String
+  role       NurseryRole @default(OWNER)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@unique([authUserId])
+  @@index([nurseryId, role])
+}
+
+model PlantGenus {
+  id             String          @id @default(uuid())
+  scientificName String          @unique
+  commonName     String?
+  baseLossRate   Float           @default(0.08)
+  categories     PlantCategory[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([scientificName])
+}
+
+model PlantCategory {
+  id              String         @id @default(uuid())
+  genusId         String
+  genus           PlantGenus     @relation(fields: [genusId], references: [id], onDelete: Cascade)
+  cultivarName    String
+  lifecycleType   LifecycleType  @default(MULTI_YEAR_PERENNIAL)
+  minSurvivalZone Int
+  decayModifier   Float          @default(0.0)
+  weeksToHarvest  Int
+  batches         LivingBatch[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@unique([genusId, cultivarName])
+  @@index([lifecycleType])
+  @@index([minSurvivalZone])
+}
+
+model LivingBatch {
+  id                 String               @id @default(uuid())
+  nurseryId          String
+  nursery            Nursery              @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  categoryId         String
+  category           PlantCategory        @relation(fields: [categoryId], references: [id])
+  startingQuantity   Int
+  currentQuantity    Int
+  projectedYield     Int
+  status             BatchStatus          @default(IN_PRODUCTION)
+  fieldLocation      String
+  infrastructureType InfrastructureType
+  manualShockFactor  Float                @default(0.0)
+  datePlanted        DateTime
+  estimatedReadyDate DateTime
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  commitments        ContractCommitment[]
+
+  @@index([nurseryId, status])
+  @@index([nurseryId, estimatedReadyDate])
+  @@index([categoryId])
+  @@index([fieldLocation])
+}
+
+model ContractCommitment {
+  id               String      @id @default(uuid())
+  nurseryId        String
+  nursery          Nursery     @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  batchId          String
+  batch            LivingBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  externalRef      String
+  committedQuantity Int
+  targetShipDate   DateTime
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@unique([nurseryId, externalRef, batchId])
+  @@index([nurseryId, targetShipDate])
+  @@index([batchId])
+}
+
+model ExcelLayout {
+  id          String   @id @default(uuid())
+  nurseryId   String
+  nursery     Nursery  @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  layoutName  String   @default("Default")
+  speciesKey  String
+  cultivarKey String?
+  quantityKey String
+  locationKey String
+  plantedKey  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([nurseryId, layoutName])
+}
+
+model ImportJob {
+  id              String       @id @default(uuid())
+  nurseryId       String
+  nursery         Nursery      @relation(fields: [nurseryId], references: [id], onDelete: Cascade)
+  status          ImportStatus @default(MAPPING)
+  originalFileName String
+  headerSnapshot  Json
+  rowCount        Int          @default(0)
+  errorMessage    String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([nurseryId, status])
+  @@index([createdAt])
+}
