@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Leaf, LogOut } from "lucide-react";
+import { FileSpreadsheet, Leaf, LogOut } from "lucide-react";
 
 import { logout } from "@/app/login/actions";
 import { requireWorkspace } from "@/lib/server/workspace";
@@ -21,6 +21,22 @@ export default async function AppLayout({
             </span>
             <span className="text-lg font-semibold">Vernalie</span>
           </Link>
+
+          <nav className="hidden items-center gap-2 md:flex">
+            <Link
+              className="inline-flex h-10 items-center justify-center rounded-[8px] px-3 text-sm font-semibold text-secondary transition hover:bg-surface-muted hover:text-foreground"
+              href="/app/dashboard"
+            >
+              Dashboard
+            </Link>
+            <Link
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] px-3 text-sm font-semibold text-secondary transition hover:bg-surface-muted hover:text-foreground"
+              href="/app/import"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              Import
+            </Link>
+          </nav>
 
           <div className="flex items-center gap-4">
             <p className="hidden max-w-[220px] truncate text-sm font-semibold text-foreground md:block">
