@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { FileSpreadsheet, UploadCloud } from "lucide-react";
 
 import { getPrisma } from "@/lib/server/prisma";
@@ -47,15 +48,16 @@ export default async function ImportPage() {
               </div>
             ) : (
               recentImports.map((job) => (
-                <div
-                  className="rounded-[8px] border border-border bg-background p-4"
+                <Link
+                  className="block rounded-[8px] border border-border bg-background p-4 transition hover:bg-surface-muted"
+                  href={`/app/import/${job.id}`}
                   key={job.id}
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="max-w-[180px] truncate font-semibold">
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+                    <p className="min-w-0 truncate font-semibold">
                       {job.originalFileName}
                     </p>
-                    <span className="rounded-[8px] bg-surface-muted px-2 py-1 font-mono text-xs text-secondary">
+                    <span className="shrink-0 rounded-[8px] bg-surface-muted px-2 py-1 font-mono text-xs text-secondary">
                       {job.status}
                     </span>
                   </div>
@@ -66,7 +68,7 @@ export default async function ImportPage() {
                       day: "numeric",
                     })}
                   </p>
-                </div>
+                </Link>
               ))
             )}
           </div>

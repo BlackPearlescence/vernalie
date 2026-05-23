@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileSpreadsheet, Leaf, LogOut } from "lucide-react";
+import { FileSpreadsheet, Leaf, LogOut, Warehouse } from "lucide-react";
 
 import { logout } from "@/app/login/actions";
 import { requireWorkspace } from "@/lib/server/workspace";
@@ -28,6 +28,13 @@ export default async function AppLayout({
               href="/app/dashboard"
             >
               Dashboard
+            </Link>
+            <Link
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] px-3 text-sm font-semibold text-secondary transition hover:bg-surface-muted hover:text-foreground"
+              href="/app/inventory"
+            >
+              <Warehouse className="h-4 w-4" />
+              Inventory
             </Link>
             <Link
               className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] px-3 text-sm font-semibold text-secondary transition hover:bg-surface-muted hover:text-foreground"

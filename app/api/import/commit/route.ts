@@ -2,6 +2,10 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { forecastBatch } from "@/lib/domain/forecasting";
+import {
+  buildDraftDuplicateKey,
+  buildExistingBatchDuplicateKey,
+} from "@/lib/domain/import-dedupe";
 import type { ImportColumnMapping } from "@/lib/domain/importer";
 import type { Prisma } from "@/lib/generated/prisma/client";
 import { BatchStatus, InfrastructureType } from "@/lib/generated/prisma/enums";
@@ -22,6 +26,12 @@ type ImportDraftPayload = {
     externalRef: string;
     committedQuantity: number;
     targetShipDate: string;
+  };
+  duplicate?: {
+    kind: "database" | "file";
+    existingBatchId?: string;
+    firstRowNumber?: number;
+    message: string;
   };
 };
 
@@ -127,11 +137,58 @@ export async function POST(request: Request) {
           });
         }
 
+        const existingBatches = await tx.livingBatch.findMany({
+          where: {
+            nurseryId: nursery.id,
+          },
+          select: {
+            id: true,
+            startingQuantity: true,
+            fieldLocation: true,
+            infrastructureType: true,
+            datePlanted: true,
+            category: {
+              select: {
+                cultivarName: true,
+              },
+            },
+          },
+        });
+        const duplicateKeys = new Set(existingBatches.map(buildExistingBatchDuplicateKey));
+        const importedBatchIds: string[] = [];
+        const skippedDuplicates: Array<{
+          cultivarName: string;
+          fieldLocation: string;
+          datePlanted: string;
+          reason: string;
+        }> = [];
+        const createdCategories = new Set<string>();
+        const matchedCategories = new Set<string>();
         let importedCount = 0;
         let commitmentCount = 0;
 
         for (const draft of payload.drafts) {
+          const duplicateKey = buildDraftDuplicateKey(draft);
+
+          if (duplicateKeys.has(duplicateKey)) {
+            skippedDuplicates.push({
+              cultivarName: draft.cultivarName,
+              fieldLocation: draft.fieldLocation,
+              datePlanted: draft.datePlanted,
+              reason: "Matched an existing batch or an earlier row in this import.",
+            });
+            continue;
+          }
+
+          duplicateKeys.add(duplicateKey);
           const category = await resolveCategory(tx, draft, nursery.usdaZone);
+
+          if (category.createdForImport) {
+            createdCategories.add(`${draft.speciesName} · ${draft.cultivarName}`);
+          } else {
+            matchedCategories.add(`${draft.speciesName} · ${draft.cultivarName}`);
+          }
+
           const infrastructureType = normalizeInfrastructureType(draft.infrastructureType);
           const status = normalizeBatchStatus(draft.status);
           const datePlanted = new Date(draft.datePlanted);
@@ -167,6 +224,7 @@ export async function POST(request: Request) {
           });
 
           importedCount += 1;
+          importedBatchIds.push(batch.id);
 
           if (draft.contract) {
             await tx.contractCommitment.create({
@@ -188,7 +246,20 @@ export async function POST(request: Request) {
           },
           data: {
             status: "IMPORTED",
-            rowCount: importedCount,
+            rowCount: payload.drafts.length,
+            headerSnapshot: {
+              headers: payload.headers,
+              mapping: payload.mapping,
+              result: {
+                importedCount,
+                commitmentCount,
+                duplicateCount: skippedDuplicates.length,
+                importedBatchIds,
+                skippedDuplicates,
+                createdCategories: Array.from(createdCategories),
+                matchedCategories: Array.from(matchedCategories),
+              },
+            },
           },
         });
 
@@ -196,6 +267,7 @@ export async function POST(request: Request) {
           importJobId: importJob.id,
           importedCount,
           commitmentCount,
+          duplicateCount: skippedDuplicates.length,
         };
       },
       {
@@ -206,6 +278,7 @@ export async function POST(request: Request) {
 
     revalidatePath("/app/dashboard");
     revalidatePath("/app/import");
+    revalidatePath(`/app/import/${result.importJobId}`);
 
     return NextResponse.json(result);
   } catch (error) {
@@ -253,15 +326,27 @@ async function resolveCategory(
     },
   });
 
-  return tx.plantCategory.upsert({
+  const existingCategory = await tx.plantCategory.findUnique({
     where: {
       genusId_cultivarName: {
         genusId: genus.id,
         cultivarName: draft.cultivarName,
       },
     },
-    update: {},
-    create: {
+    include: {
+      genus: true,
+    },
+  });
+
+  if (existingCategory) {
+    return {
+      ...existingCategory,
+      createdForImport: false,
+    };
+  }
+
+  const category = await tx.plantCategory.create({
+    data: {
       genusId: genus.id,
       cultivarName: draft.cultivarName,
       lifecycleType: inferLifecycleType(draft),
@@ -273,6 +358,11 @@ async function resolveCategory(
       genus: true,
     },
   });
+
+  return {
+    ...category,
+    createdForImport: true,
+  };
 }
 
 function normalizeInfrastructureType(value: string) {

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   AlertTriangle,
   ArrowRight,
@@ -42,6 +43,12 @@ type ImportDraftPreview = {
     committedQuantity: number;
     targetShipDate: string;
   };
+  duplicate?: {
+    kind: "database" | "file";
+    existingBatchId?: string;
+    firstRowNumber?: number;
+    message: string;
+  };
 };
 
 type PreviewResponse = {
@@ -62,6 +69,7 @@ type CommitResult = {
   importJobId: string;
   importedCount: number;
   commitmentCount: number;
+  duplicateCount: number;
 };
 
 const importFields: Array<{
@@ -99,6 +107,7 @@ export function ImportWorkspace() {
   );
   const validDraftCount = preview?.drafts.length ?? 0;
   const errorCount = preview?.errors.length ?? 0;
+  const duplicateCount = preview?.drafts.filter((draft) => draft.duplicate).length ?? 0;
 
   async function loadPreview(nextFile: File, nextMapping?: ImportColumnMapping) {
     setIsParsing(true);
@@ -240,9 +249,18 @@ export function ImportWorkspace() {
           </span>
         </button>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <MetricCard label="Valid rows" value={validDraftCount.toLocaleString()} />
-          <MetricCard label="Errors" value={errorCount.toLocaleString()} tone={errorCount ? "danger" : "default"} />
+          <MetricCard
+            label="Errors"
+            value={errorCount.toLocaleString()}
+            tone={errorCount ? "danger" : "default"}
+          />
+          <MetricCard
+            label="Duplicates"
+            value={duplicateCount.toLocaleString()}
+            tone={duplicateCount ? "warning" : "default"}
+          />
           <MetricCard label="Columns" value={(preview?.headers.length ?? 0).toLocaleString()} />
         </div>
 
@@ -258,8 +276,18 @@ export function ImportWorkspace() {
             {commitResult ? (
               <p className="mt-2 font-normal">
                 {commitResult.importedCount.toLocaleString()} batches ·{" "}
-                {commitResult.commitmentCount.toLocaleString()} commitments
+                {commitResult.commitmentCount.toLocaleString()} commitments ·{" "}
+                {commitResult.duplicateCount.toLocaleString()} duplicates skipped
               </p>
+            ) : null}
+            {commitResult ? (
+              <Link
+                className="mt-3 inline-flex items-center gap-2 underline underline-offset-4"
+                href={`/app/import/${commitResult.importJobId}`}
+              >
+                View import details
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             ) : null}
           </div>
         ) : null}
@@ -364,7 +392,7 @@ export function ImportWorkspace() {
           {preview ? (
             <div className="overflow-hidden rounded-[8px] border border-border">
               <div className="max-h-[420px] overflow-auto">
-                <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+                <table className="w-full min-w-[860px] border-collapse text-left text-sm">
                   <thead className="sticky top-0 bg-surface text-secondary">
                     <tr>
                       <th className="border-b border-border p-3 font-semibold">Crop</th>
@@ -373,6 +401,7 @@ export function ImportWorkspace() {
                       <th className="border-b border-border p-3 font-semibold">System</th>
                       <th className="border-b border-border p-3 font-semibold">Planted</th>
                       <th className="border-b border-border p-3 font-semibold">Contract</th>
+                      <th className="border-b border-border p-3 font-semibold">Import</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -393,6 +422,17 @@ export function ImportWorkspace() {
                             </span>
                           ) : (
                             <span className="text-secondary">None</span>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          {draft.duplicate ? (
+                            <span className="inline-flex rounded-[8px] bg-warning/10 px-2 py-1 text-xs font-semibold text-warning">
+                              Duplicate
+                            </span>
+                          ) : (
+                            <span className="inline-flex rounded-[8px] bg-success/10 px-2 py-1 text-xs font-semibold text-success">
+                              New
+                            </span>
                           )}
                         </td>
                       </tr>
@@ -426,6 +466,26 @@ export function ImportWorkspace() {
               ))}
             </div>
           ) : null}
+
+          {duplicateCount ? (
+            <div className="mt-4 space-y-2">
+              {preview?.drafts
+                .filter((draft) => draft.duplicate)
+                .slice(0, 8)
+                .map((draft, index) => (
+                  <div
+                    className="flex gap-3 rounded-[8px] border border-warning bg-warning/10 p-3 text-sm text-warning"
+                    key={`${draft.cultivarName}-${draft.fieldLocation}-${index}`}
+                  >
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>
+                      {draft.cultivarName} at {draft.fieldLocation}:{" "}
+                      {draft.duplicate?.message}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          ) : null}
         </section>
       </div>
     </div>
@@ -439,11 +499,15 @@ function MetricCard({
 }: {
   label: string;
   value: string;
-  tone?: "default" | "danger";
+  tone?: "default" | "danger" | "warning";
 }) {
   return (
     <div className="rounded-[8px] border border-border bg-background p-3">
-      <p className={`font-mono text-xl font-semibold ${tone === "danger" ? "text-danger" : ""}`}>
+      <p
+        className={`font-mono text-xl font-semibold ${
+          tone === "danger" ? "text-danger" : tone === "warning" ? "text-warning" : ""
+        }`}
+      >
         {value}
       </p>
       <p className="mt-1 text-xs text-secondary">{label}</p>
